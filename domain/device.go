@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -22,4 +24,19 @@ func (s *SignatureDevice) GetSignatureCounter() int {
 
 func (s *SignatureDevice) IncrementSignatureCounter() {
 	s.signatureCounter += 1
+}
+
+type SignatureDeviceStore interface {
+	FindById(id string) (*SignatureDevice, error)
+	FindAll() ([]*SignatureDevice, error)
+	Create(*SignatureDevice) error
+	Update(*SignatureDevice) error
+}
+
+type DeviceNotFoundError struct {
+	SignatureDeviceId string
+}
+
+func (e *DeviceNotFoundError) Error() string {
+	return fmt.Sprintf("device with ID %s not found", e.SignatureDeviceId)
 }
