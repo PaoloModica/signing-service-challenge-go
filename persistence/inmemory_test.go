@@ -4,16 +4,17 @@ import (
 	"testing"
 
 	"github.com/PaoloModica/signing-service-challenge-go/domain"
+	test_utils "github.com/PaoloModica/signing-service-challenge-go/internal"
 	"github.com/PaoloModica/signing-service-challenge-go/persistence"
 )
 
 func TestInMemorySignatureDeviceStore(t *testing.T) {
 	t.Run("create InMemorySignatureDeviceStore", func(t *testing.T) {
 		store, err := persistence.NewInMemorySignatureDeviceStore()
-		assertInMemorySignatureDeviceStoreError(t, err)
+		test_utils.AssertErrorNotNil(t, "InMemorySignatureDeviceStore creation", err)
 
 		devices, err := store.FindAll()
-		assertInMemorySignatureDeviceStoreError(t, err)
+		test_utils.AssertErrorNotNil(t, "devices retrieval", err)
 		expectedDevicesLen := 0
 		if len(devices) != expectedDevicesLen {
 			t.Errorf("expected devices length %d, found %d", expectedDevicesLen, len(devices))
@@ -22,20 +23,20 @@ func TestInMemorySignatureDeviceStore(t *testing.T) {
 	})
 	t.Run("InMemorySignatureDeviceStore capabilities", func(t *testing.T) {
 		store, _ := persistence.NewInMemorySignatureDeviceStore()
-		device, _ := domain.NewSignatureDevice("testDevice", []byte("privateKey"), []byte("publicKey"))
+		device, _ := domain.NewSignatureDevice("testDevice", []byte("privateKey"), domain.ECC)
 		t.Run("create new signature device", func(t *testing.T) {
 			devices, _ := store.FindAll()
 			expectedDevicesLen := len(devices) + 1
 
 			err := store.Create(device)
-			assertInMemorySignatureDeviceStoreError(t, err)
+			test_utils.AssertErrorNotNil(t, "device creation and storaging", err)
 
 			devices, _ = store.FindAll()
-			assertSignatureDeviceStoreLen(t, expectedDevicesLen, len(devices))
+			test_utils.AssertSignatureDeviceStoreLen(t, expectedDevicesLen, len(devices))
 		})
 		t.Run("find signature device by ID, existing device", func(t *testing.T) {
 			requestedDevice, err := store.FindById(device.Id)
-			assertInMemorySignatureDeviceStoreError(t, err)
+			test_utils.AssertErrorNotNil(t, "device retrieval", err)
 			if requestedDevice != device {
 				t.Errorf("expected %s device, found %s", device.Label, requestedDevice.Label)
 			}
@@ -51,7 +52,7 @@ func TestInMemorySignatureDeviceStore(t *testing.T) {
 			device.IncrementSignatureCounter()
 
 			err := store.Update(device)
-			assertInMemorySignatureDeviceStoreError(t, err)
+			test_utils.AssertErrorNotNil(t, "device update and storaging", err)
 
 			updatedDevice, _ := store.FindById(device.Id)
 			gotCounter := updatedDevice.GetSignatureCounter()
@@ -61,7 +62,7 @@ func TestInMemorySignatureDeviceStore(t *testing.T) {
 			}
 		})
 		t.Run("update signature device counter, unknown device", func(t *testing.T) {
-			deviceNotInStore, _ := domain.NewSignatureDevice("newDevice", []byte("privateKey"), []byte("publicKey"))
+			deviceNotInStore, _ := domain.NewSignatureDevice("newDevice", []byte("privateKey"), domain.ECC)
 
 			err := store.Update(deviceNotInStore)
 			if err == nil {
@@ -69,20 +70,4 @@ func TestInMemorySignatureDeviceStore(t *testing.T) {
 			}
 		})
 	})
-}
-
-func assertInMemorySignatureDeviceStoreError(t *testing.T, e error) {
-	t.Helper()
-
-	if e != nil {
-		t.Errorf("an error occurred: %s", e)
-	}
-}
-
-func assertSignatureDeviceStoreLen(t *testing.T, exp int, got int) {
-	t.Helper()
-
-	if exp != got {
-		t.Errorf("expected %d devices in store, got %d", exp, got)
-	}
 }
