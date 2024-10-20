@@ -28,6 +28,7 @@ type SignatureDevice struct {
 	PrivateKey       []byte
 	KeyType          KeyGenAlgorithm
 	signatureCounter int
+	lastSignature    []byte
 }
 
 func NewSignatureDevice(label string, privateKey []byte, keytype KeyGenAlgorithm) (*SignatureDevice, error) {
@@ -38,8 +39,13 @@ func (s *SignatureDevice) GetSignatureCounter() int {
 	return s.signatureCounter
 }
 
-func (s *SignatureDevice) IncrementSignatureCounter() {
+func (s *SignatureDevice) SetLastSignature(signature []byte) {
+	s.lastSignature = signature
 	s.signatureCounter += 1
+}
+
+func (s *SignatureDevice) GetLastSignature() ([]byte, error) {
+	return s.lastSignature, nil
 }
 
 type SignatureDeviceStore interface {
@@ -103,7 +109,7 @@ type SignatureDeviceService interface {
 	FindById(id string) (*SignatureDevice, error)
 	FindAll() ([]*SignatureDevice, error)
 	Create(label string, keyType KeyGenAlgorithm) (string, error)
-	Update(id string) error
+	Update(id string, signature []byte) error
 }
 
 type signatureDeviceService struct {
@@ -178,11 +184,11 @@ func (s *signatureDeviceService) Create(label string, keyType KeyGenAlgorithm) (
 	return id, nil
 }
 
-func (s *signatureDeviceService) Update(id string) error {
+func (s *signatureDeviceService) Update(id string, signature []byte) error {
 	device, err := s.repository.FindById(id)
 	if device == nil || err != nil {
 		return DeviceNotFoundError(fmt.Sprintf("device with ID %s not found", id))
 	}
-	device.IncrementSignatureCounter()
+	device.SetLastSignature(signature)
 	return s.repository.Update(device)
 }

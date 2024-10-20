@@ -30,17 +30,23 @@ func TestSignatureDevice(t *testing.T) {
 		}
 	})
 
-	t.Run("increment and get SignatureDevice instance counter", func(t *testing.T) {
+	t.Run("set last signature and get SignatureDevice instance counter", func(t *testing.T) {
 		device, err := domain.NewSignatureDevice("device", []byte("privateKey"), domain.RSA)
 
+		lastSignature := []byte("lastSignature")
 		test_utils.AssertErrorNotNil(t, "signature device creation", err)
 
-		device.IncrementSignatureCounter()
+		device.SetLastSignature(lastSignature)
 		expectedVal := 1
 		gotVal := device.GetSignatureCounter()
 
 		if expectedVal != gotVal {
 			t.Errorf("expected signature device counter to be 1, found")
+		}
+
+		gotSignature, _ := device.GetLastSignature()
+		if string(gotSignature) != string(lastSignature) {
+			t.Errorf("expected signature device last signature to be %s, found %s", string(lastSignature), string(gotSignature))
 		}
 	})
 }
@@ -77,9 +83,10 @@ func TestSignatureDeviceRepository(t *testing.T) {
 				t.Errorf("expected %s device, found %s", device.Label, requestedDevice.Label)
 			}
 		})
-		t.Run("update signature device counter, existing device", func(t *testing.T) {
+		t.Run("update signature device last signature, existing device", func(t *testing.T) {
+			lastSignature := []byte("lastSignature")
 			expectedCounter := device.GetSignatureCounter() + 1
-			device.IncrementSignatureCounter()
+			device.SetLastSignature(lastSignature)
 
 			err := repository.Update(device)
 			test_utils.AssertErrorNotNil(t, "device update and storaging", err)
@@ -133,9 +140,10 @@ func TestSignatureDeviceService(t *testing.T) {
 			test_utils.AssertSignatureDeviceStoreLen(t, expectedDeviceLen, len(devices))
 		})
 		t.Run("update signature device counter, existing device", func(t *testing.T) {
+			lastSignature := []byte("lastSignature")
 			expectedCounter := device.GetSignatureCounter() + 1
 
-			err := service.Update(device.Id)
+			err := service.Update(device.Id, lastSignature)
 			test_utils.AssertErrorNotNil(t, "device update and storaging", err)
 
 			updatedDevice, _ := service.FindById(device.Id)
@@ -146,7 +154,8 @@ func TestSignatureDeviceService(t *testing.T) {
 			}
 		})
 		t.Run("update device with unknown ID", func(t *testing.T) {
-			err := service.Update("unknownId")
+			lastSignature := []byte("lastSignature")
+			err := service.Update("unknownId", lastSignature)
 			if err == nil {
 				t.Errorf("expected not found error")
 			}

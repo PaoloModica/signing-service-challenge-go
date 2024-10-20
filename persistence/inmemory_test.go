@@ -47,9 +47,10 @@ func TestInMemorySignatureDeviceStore(t *testing.T) {
 				t.Errorf("expected device not to be found")
 			}
 		})
-		t.Run("update signature device counter, existing device", func(t *testing.T) {
+		t.Run("update signature device last signature, existing device", func(t *testing.T) {
+			lastSignature := []byte("lastSignature")
 			expectedCounter := device.GetSignatureCounter() + 1
-			device.IncrementSignatureCounter()
+			device.SetLastSignature(lastSignature)
 
 			err := store.Update(device)
 			test_utils.AssertErrorNotNil(t, "device update and storaging", err)
