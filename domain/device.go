@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/PaoloModica/signing-service-challenge-go/crypto"
 	"github.com/google/uuid"
@@ -62,26 +63,39 @@ type SignatureDeviceRepository interface {
 }
 
 type signatureDeviceRepository struct {
+	lock  sync.RWMutex
 	store SignatureDeviceStore
 }
 
 func NewSignatureDeviceRepository(s SignatureDeviceStore) (*signatureDeviceRepository, error) {
-	return &signatureDeviceRepository{store: s}, nil
+	return &signatureDeviceRepository{lock: sync.RWMutex{}, store: s}, nil
 }
 
 func (r *signatureDeviceRepository) FindById(id string) (*SignatureDevice, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	return r.store.FindById(id)
 }
 
 func (r *signatureDeviceRepository) FindAll() ([]*SignatureDevice, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	return r.store.FindAll()
 }
 
 func (r *signatureDeviceRepository) Create(d *SignatureDevice) (string, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	return r.store.Create(d)
 }
 
 func (r *signatureDeviceRepository) Update(d *SignatureDevice) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	return r.store.Update(d)
 }
 
