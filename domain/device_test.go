@@ -1,7 +1,6 @@
 package domain_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/PaoloModica/signing-service-challenge-go/domain"
@@ -47,8 +46,8 @@ func TestSignatureDevice(t *testing.T) {
 }
 
 func TestSignatureDeviceRepository(t *testing.T) {
-	store := StubSignatureDeviceStore{
-		store: map[string]*domain.SignatureDevice{},
+	store := test_utils.StubSignatureDeviceStore{
+		Store: map[string]*domain.SignatureDevice{},
 	}
 	t.Run("create new signature device repository", func(t *testing.T) {
 		repository, err := domain.NewSignatureDeviceRepository(&store)
@@ -97,8 +96,8 @@ func TestSignatureDeviceRepository(t *testing.T) {
 
 func TestSignatureDeviceService(t *testing.T) {
 	device, _ := domain.NewSignatureDevice("testDevice1", []byte("privateKey"), "RSA")
-	store := StubSignatureDeviceStore{
-		store: map[string]*domain.SignatureDevice{device.Id: device},
+	store := test_utils.StubSignatureDeviceStore{
+		Store: map[string]*domain.SignatureDevice{device.Id: device},
 	}
 	repository, _ := domain.NewSignatureDeviceRepository(&store)
 	t.Run("create new signature device service", func(t *testing.T) {
@@ -153,40 +152,6 @@ func TestSignatureDeviceService(t *testing.T) {
 			}
 		})
 	})
-}
-
-type StubSignatureDeviceStore struct {
-	store map[string]*domain.SignatureDevice
-}
-
-func (s *StubSignatureDeviceStore) FindById(id string) (*domain.SignatureDevice, error) {
-	d, found := s.store[id]
-	if !found {
-		return nil, domain.DeviceNotFoundError(fmt.Sprintf("device with ID %s not found", id))
-	}
-	return d, nil
-}
-
-func (s *StubSignatureDeviceStore) FindAll() ([]*domain.SignatureDevice, error) {
-	devices := []*domain.SignatureDevice{}
-	for _, v := range s.store {
-		devices = append(devices, v)
-	}
-	return devices, nil
-}
-
-func (s *StubSignatureDeviceStore) Create(d *domain.SignatureDevice) (string, error) {
-	s.store[d.Id] = d
-	return d.Id, nil
-}
-
-func (s *StubSignatureDeviceStore) Update(d *domain.SignatureDevice) error {
-	d, err := s.FindById(d.Id)
-	if err != nil {
-		return nil
-	}
-	s.store[d.Id] = d
-	return nil
 }
 
 func assertSignatureDeviceInitialStatus(t *testing.T, d *domain.SignatureDevice) {

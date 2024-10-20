@@ -2,7 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+
+	"github.com/PaoloModica/signing-service-challenge-go/domain"
 )
 
 // Response is the generic API response container.
@@ -17,26 +20,36 @@ type ErrorResponse struct {
 
 // Server manages HTTP requests and dispatches them to the appropriate services.
 type Server struct {
-	listenAddress string
+	http.Handler
+	listenAddress          string
+	signatureDeviceService domain.SignatureDeviceService
 }
 
 // NewServer is a factory to instantiate a new Server.
-func NewServer(listenAddress string) *Server {
+func NewServer(listenAddress string, signatureDeviceService domain.SignatureDeviceService) *Server {
 	return &Server{
-		listenAddress: listenAddress,
+		listenAddress:          listenAddress,
+		signatureDeviceService: signatureDeviceService,
 		// TODO: add services / further dependencies here ...
 	}
 }
 
-// Run registers all HandlerFuncs for the existing HTTP routes and starts the Server.
-func (s *Server) Run() error {
+func (s *Server) InitializeRouter() error {
 	mux := http.NewServeMux()
 
 	mux.Handle("/api/v0/health", http.HandlerFunc(s.Health))
+	mux.Handle("/api/v0/devices", http.HandlerFunc(s.HandleSignatureDeviceCreation))
+	mux.Handle("/api/v0/devices/", http.HandlerFunc(s.HandleSignatureDeviceRetrieval))
 
-	// TODO: register further HandlerFuncs here ...
+	s.Handler = mux
 
-	return http.ListenAndServe(s.listenAddress, mux)
+	return nil
+}
+
+// Run registers all HandlerFuncs for the existing HTTP routes and starts the Server.
+func (s *Server) Run() error {
+	log.Printf("server run at %s", s.listenAddress)
+	return http.ListenAndServe(s.listenAddress, s.Handler)
 }
 
 // WriteInternalError writes a default internal error message as an HTTP response.
