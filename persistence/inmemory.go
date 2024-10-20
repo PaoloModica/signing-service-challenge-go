@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
@@ -23,7 +24,7 @@ func (s *InMemorySignatureDeviceStore) FindById(id string) (*domain.SignatureDev
 	device, found := s.store[id]
 
 	if !found {
-		return nil, &domain.DeviceNotFoundError{SignatureDeviceId: id}
+		return nil, domain.DeviceNotFoundError(fmt.Sprintf("device with ID %s not found", id))
 	}
 	return device, nil
 }
@@ -36,13 +37,13 @@ func (s *InMemorySignatureDeviceStore) FindAll() ([]*domain.SignatureDevice, err
 	return devices, nil
 }
 
-func (s *InMemorySignatureDeviceStore) Create(d *domain.SignatureDevice) error {
+func (s *InMemorySignatureDeviceStore) Create(d *domain.SignatureDevice) (string, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.store[d.Id] = d
 	log.Printf("device %s stored successfully", d.Label)
-	return nil
+	return d.Id, nil
 }
 
 func (s *InMemorySignatureDeviceStore) Update(d *domain.SignatureDevice) error {
@@ -52,7 +53,7 @@ func (s *InMemorySignatureDeviceStore) Update(d *domain.SignatureDevice) error {
 	_, found := s.store[d.Id]
 
 	if !found {
-		return &domain.DeviceNotFoundError{SignatureDeviceId: d.Id}
+		return domain.DeviceNotFoundError(fmt.Sprintf("device with ID %s not found", d.Id))
 	}
 
 	s.store[d.Id] = d

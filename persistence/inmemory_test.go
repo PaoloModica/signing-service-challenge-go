@@ -28,8 +28,8 @@ func TestInMemorySignatureDeviceStore(t *testing.T) {
 			devices, _ := store.FindAll()
 			expectedDevicesLen := len(devices) + 1
 
-			err := store.Create(device)
-			test_utils.AssertErrorNotNil(t, "device creation and storaging", err)
+			id, err := store.Create(device)
+			test_utils.AssertSignatureDeviceId(t, id, err)
 
 			devices, _ = store.FindAll()
 			test_utils.AssertSignatureDeviceStoreLen(t, expectedDevicesLen, len(devices))

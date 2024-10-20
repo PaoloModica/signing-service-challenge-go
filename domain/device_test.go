@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/PaoloModica/signing-service-challenge-go/domain"
@@ -64,8 +65,8 @@ func TestSignatureDeviceRepository(t *testing.T) {
 			devices, _ := repository.FindAll()
 			expectedDevicesLen := len(devices) + 1
 
-			err := repository.Create(device)
-			test_utils.AssertErrorNotNil(t, "device creation and store", err)
+			id, err := repository.Create(device)
+			test_utils.AssertSignatureDeviceId(t, id, err)
 
 			devices, _ = repository.FindAll()
 			test_utils.AssertSignatureDeviceStoreLen(t, expectedDevicesLen, len(devices))
@@ -94,12 +95,76 @@ func TestSignatureDeviceRepository(t *testing.T) {
 	})
 }
 
+func TestSignatureDeviceService(t *testing.T) {
+	device, _ := domain.NewSignatureDevice("testDevice1", []byte("privateKey"), "RSA")
+	store := StubSignatureDeviceStore{
+		store: map[string]*domain.SignatureDevice{device.Id: device},
+	}
+	repository, _ := domain.NewSignatureDeviceRepository(&store)
+	t.Run("create new signature device service", func(t *testing.T) {
+		service, err := domain.NewSignatureDeviceService(repository)
+
+		if service == nil || err != nil {
+			t.Errorf("expected SignatureDeviceRepository to have been created")
+		}
+	})
+	t.Run("signature device service capabilities", func(t *testing.T) {
+		service, _ := domain.NewSignatureDeviceService(repository)
+		t.Run("find all signature devices", func(t *testing.T) {
+			expectedDeviceLen := 1
+			devices, err := service.FindAll()
+			test_utils.AssertErrorNotNil(t, "device retrieval", err)
+			test_utils.AssertSignatureDeviceStoreLen(t, expectedDeviceLen, len(devices))
+		})
+		t.Run("find signature device by ID", func(t *testing.T) {
+			d, err := service.FindById(device.Id)
+			test_utils.AssertErrorNotNil(t, "device retrieval", err)
+			if d != device {
+				t.Errorf("expected to find device %s, got device %s", device.Label, d.Label)
+			}
+		})
+		t.Run("create new signature device", func(t *testing.T) {
+			devices, _ := service.FindAll()
+			expectedDeviceLen := len(devices) + 1
+
+			id, err := service.Create("testDevice", "RSA")
+			test_utils.AssertSignatureDeviceId(t, id, err)
+
+			devices, _ = service.FindAll()
+			test_utils.AssertSignatureDeviceStoreLen(t, expectedDeviceLen, len(devices))
+		})
+		t.Run("update signature device counter, existing device", func(t *testing.T) {
+			expectedCounter := device.GetSignatureCounter() + 1
+
+			err := service.Update(device.Id)
+			test_utils.AssertErrorNotNil(t, "device update and storaging", err)
+
+			updatedDevice, _ := service.FindById(device.Id)
+			gotCounter := updatedDevice.GetSignatureCounter()
+
+			if expectedCounter != gotCounter {
+				t.Errorf("expected device signature counter to be %d, got %d", expectedCounter, gotCounter)
+			}
+		})
+		t.Run("update device with unknown ID", func(t *testing.T) {
+			err := service.Update("unknownId")
+			if err == nil {
+				t.Errorf("expected not found error")
+			}
+		})
+	})
+}
+
 type StubSignatureDeviceStore struct {
 	store map[string]*domain.SignatureDevice
 }
 
 func (s *StubSignatureDeviceStore) FindById(id string) (*domain.SignatureDevice, error) {
-	return s.store[id], nil
+	d, found := s.store[id]
+	if !found {
+		return nil, domain.DeviceNotFoundError(fmt.Sprintf("device with ID %s not found", id))
+	}
+	return d, nil
 }
 
 func (s *StubSignatureDeviceStore) FindAll() ([]*domain.SignatureDevice, error) {
@@ -110,12 +175,16 @@ func (s *StubSignatureDeviceStore) FindAll() ([]*domain.SignatureDevice, error) 
 	return devices, nil
 }
 
-func (s *StubSignatureDeviceStore) Create(d *domain.SignatureDevice) error {
+func (s *StubSignatureDeviceStore) Create(d *domain.SignatureDevice) (string, error) {
 	s.store[d.Id] = d
-	return nil
+	return d.Id, nil
 }
 
 func (s *StubSignatureDeviceStore) Update(d *domain.SignatureDevice) error {
+	d, err := s.FindById(d.Id)
+	if err != nil {
+		return nil
+	}
 	s.store[d.Id] = d
 	return nil
 }
